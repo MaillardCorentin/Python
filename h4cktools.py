@@ -1,5 +1,7 @@
-import httpx
 import argparse
+import asyncio
+import httpx
+import time
 import json 
 
 # Développez un outil de fuzzing.
@@ -23,35 +25,40 @@ def argument():
 
     parser.add_argument("-u", "--url", help="url path", required=True)
     parser.add_argument("-d", "--dict", help="path to dictionary file", required=True)
-    parser.add_argument("-p", "--post", help="delay between try", required=True)
+    parser.add_argument("-p", "--post", help="data", required=True)
+    parser.add_argument("-r", "--rate", type = int, help="delay between try in millisecond", required=True)
     parser.add_argument("-h2", "--help2", action="store_true", help="view all possible command")
 
     args = parser.parse_args()
-    return args.dict, args.url, args.post
+    return args.dict, args.url, args.post, args.rate
 
-def dictionary(line):
-    return line.strip()
+async def main(url, dic_data):
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, json=dic_data)
+        return resp.json()
+        
+
 
 if __name__ == "__main__":
-    dico, url, data=argument()
-
+    dico, url, data, rate=argument()
+    rate /= 1000 #transform rate from sec to milliseconds
     dic_data = json.loads(data)
+    
     if dic_data["username"] == "FUZZ":
         choice = "username"
     else:
         choice = "password"
-    file_dict = open(dico, "r")
-    line_dict = file_dict.readline()
     
-    while line_dict:
-        print(line_dict)
-        passwd = dictionary(line_dict)
-        dic_data.update({choice: passwd})
-        r = httpx.post(url, json=dic_data)
-        response = r.json()
-        if response['Success']:
-            print("username:", dic_data['username'], "password:", dic_data['password'])
-            break
-        line_dict = file_dict.readline()
-    file_dict.close()
+    with open(dico) as f:
+        for line in f:
+            passwd = line.strip()
+            dic_data.update({choice: passwd})
+            response = asyncio.run(main(url, dic_data))
+            if response['Success']:
+                print("username:", dic_data['username'], "password:", dic_data['password'])
+                break
+            time.sleep(rate)
+            
+
+
 
