@@ -2,7 +2,8 @@ import argparse
 import asyncio
 import httpx
 import time
-import json 
+import json
+from aiofile import AIOFile, LineReader, Writer
 
 # Développez un outil de fuzzing.
 # voilà comment utiliser l'outil:
@@ -37,7 +38,15 @@ async def main(url, dic_data):
         resp = await client.post(url, json=dic_data)
         return resp.json()
         
-
+async def read_dic(dico, dic_data, choice):
+     async with AIOFile(dico, 'r') as afp:
+         async for line in LineReader(afp):
+             passwd = line.strip()
+             dic_data.update({choice: passwd})
+             response = await main(url, dic_data)
+             if response['Success']:
+                return {"username": dic_data['username'], "password": dic_data['password']}
+             await asyncio.sleep(rate)
 
 if __name__ == "__main__":
     dico, url, data, rate=argument()
@@ -48,17 +57,8 @@ if __name__ == "__main__":
         choice = "username"
     else:
         choice = "password"
-    
-    with open(dico) as f:
-        for line in f:
-            passwd = line.strip()
-            dic_data.update({choice: passwd})
-            response = asyncio.run(main(url, dic_data))
-            if response['Success']:
-                print("username:", dic_data['username'], "password:", dic_data['password'])
-                break
-            time.sleep(rate)
-            
+    test = asyncio.run(read_dic(dico, dic_data, choice))
+    print(test)
 
 
 
